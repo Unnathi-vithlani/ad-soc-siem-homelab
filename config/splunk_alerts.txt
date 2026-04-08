@@ -1,0 +1,59 @@
+# ============================================================
+# Splunk Detection Alert Queries
+# Active Directory Security Lab
+# Author: Unnathi Vithlani
+# ============================================================
+
+# ------------------------------------------------------------
+# ALERT 1 — Brute Force Attack Detection
+# Detects: Multiple failed login attempts (EventCode 4625)
+# Type: Scheduled | Every hour | Severity: Medium
+# ------------------------------------------------------------
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| stats count by host, Account_Name
+| where count >= 1
+
+
+# ------------------------------------------------------------
+# ALERT 2 — Port Scan Detected
+# Detects: Single source IP connecting to many distinct ports
+#          (signature of Nmap scanning)
+# Type: Real-time | Per result | Severity: Medium
+# ------------------------------------------------------------
+index=main sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=3
+| stats dc(DestinationPort) as port_count by SourceIp
+| where port_count > 10
+
+
+# ------------------------------------------------------------
+# ALERT 3 — Suspicious PowerShell Execution
+# Detects: PowerShell techniques common in attacks:
+#          - Execution policy bypass
+#          - Base64 encoded commands
+#          - IEX download cradles
+# Type: Real-time | Per result | Severity: Critical
+# ------------------------------------------------------------
+index=main sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+(CommandLine="*Bypass*" OR CommandLine="*EncodedCommand*"
+ OR CommandLine="*DownloadString*" OR CommandLine="*IEX*")
+| table _time, host, CommandLine
+
+
+# ------------------------------------------------------------
+# VERIFICATION QUERIES — use these to confirm data is flowing
+# ------------------------------------------------------------
+
+# Check both hosts are sending data
+index=main | stats count by host, sourcetype
+
+# Check Security logs have failed logins
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| stats count by host
+
+# Check Sysmon is collecting network events
+index=main sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=3
+| stats count by host
+
+# Check Sysmon is collecting process events
+index=main sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| stats count by host
