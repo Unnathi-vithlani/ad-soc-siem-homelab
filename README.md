@@ -150,9 +150,9 @@ sourcetype = XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
 ### Phase 6 — Splunk Universal Forwarder on WIN11
 ```powershell
 cd "C:\Program Files\SplunkUniversalForwarder\bin"
-.\splunk.exe add forward-server 192.168.100.10:9997 -auth admin:P@ssw0rd123!
+.\splunk.exe add forward-server 192.168.100.10:9997 -auth admin:<SPLUNK_ADMIN_PASSWORD>
 .\splunk.exe restart
-.\splunk.exe list forward-server -auth admin:P@ssw0rd123!
+.\splunk.exe list forward-server -auth admin:<SPLUNK_ADMIN_PASSWORD>
 # Should show: Active forwards: 192.168.100.10:9997
 ```
 
@@ -301,9 +301,16 @@ ad-soc-siem-homelab/
 │   ├── inputs_dc1.conf                # Splunk inputs.conf for DC1
 │   ├── inputs_win11.conf              # Splunk inputs.conf for WIN11 forwarder
 │   └── splunk_alerts.txt             # All 3 SPL alert queries
+├── detection-rules/                   # Portable versions of the lab detections
+│   ├── README.md                      # Rule map, MITRE mapping, validation status
+│   ├── sigma/                         # 3 Sigma rules
+│   ├── snort/                         # 2 Snort rules
+│   └── yara/                          # 3 YARA rules + test script
 └── screenshots/
     └── (add your own screenshots here)
 ```
+
+See [`detection-rules/`](detection-rules/README.md) for the Sigma, Snort and YARA versions of the three Splunk alerts.
 
 ---
 
@@ -321,7 +328,7 @@ ad-soc-siem-homelab/
 ## 👤 Author
 
 **Unnathi Vithlani**  
-Aspiring SOC Analyst | Cybersecurity Enthusiast | Home Lab Builder
+SOC & Detection Engineering | Cybersecurity Home Lab Builder
 
 *All attacks were performed in a fully isolated lab environment on machines I own and control. This project is for educational purposes only.*
 
