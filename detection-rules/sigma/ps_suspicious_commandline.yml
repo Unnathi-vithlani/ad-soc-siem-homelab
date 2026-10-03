@@ -1,0 +1,33 @@
+title: Suspicious PowerShell Command Line (Bypass, Encoded, Download Cradle)
+id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a01
+status: experimental
+description: Detects PowerShell started with an execution policy bypass, an encoded command, or a download cradle. Built from the Suspicious PowerShell Execution alert in ad-soc-siem-homelab.
+references:
+    - https://github.com/Unnathi-vithlani/ad-soc-siem-homelab
+author: Unnathi Vithlani
+date: 2026-10-03
+tags:
+    - attack.execution
+    - attack.t1059.001
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_img:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+    selection_cmd:
+        CommandLine|contains:
+            - '-ExecutionPolicy Bypass'
+            - '-EncodedCommand'
+            - 'DownloadString'
+            - 'Net.WebClient'
+            - 'Invoke-Expression'
+    selection_iex:
+        CommandLine|re: '(?i)\biex\b'
+    condition: selection_img and (selection_cmd or selection_iex)
+falsepositives:
+    - Administrative scripts that use execution policy bypass
+    - Software deployment tools that launch encoded PowerShell
+level: high

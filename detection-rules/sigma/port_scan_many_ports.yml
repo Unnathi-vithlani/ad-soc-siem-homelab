@@ -1,0 +1,36 @@
+title: Outbound Connection
+id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a04
+name: network_connection_any
+status: experimental
+description: Sysmon network connection event. Used by the port scan correlation rule below.
+author: Unnathi Vithlani
+date: 2026-10-03
+logsource:
+    category: network_connection
+    product: windows
+detection:
+    selection:
+        Initiated: 'true'
+    condition: selection
+level: low
+---
+title: Possible Port Scan, Many Destination Ports From One Source
+id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a05
+status: experimental
+description: One source contacts more than 10 distinct destination ports within one minute. Mirrors the Port Scan Detected alert in ad-soc-siem-homelab.
+author: Unnathi Vithlani
+date: 2026-10-03
+tags:
+    - attack.discovery
+    - attack.t1046
+correlation:
+    type: value_count
+    rules:
+        - network_connection_any
+    group-by:
+        - SourceIp
+    timespan: 1m
+    condition:
+        field: DestinationPort
+        gt: 10
+level: medium

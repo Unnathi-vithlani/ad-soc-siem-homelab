@@ -1,0 +1,35 @@
+title: Failed Logon
+id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a02
+name: failed_logon
+status: experimental
+description: Single failed Windows logon event. Used by the brute force correlation rule below.
+author: Unnathi Vithlani
+date: 2026-10-03
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+level: low
+---
+title: Possible Brute Force, Repeated Failed Logons
+id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a03
+status: experimental
+description: Five or more failed logons for the same account within five minutes. Replaces the single failure threshold used in the first version of the lab alert.
+author: Unnathi Vithlani
+date: 2026-10-03
+tags:
+    - attack.credential-access
+    - attack.t1110
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    group-by:
+        - TargetUserName
+    timespan: 5m
+    condition:
+        gte: 5
+level: medium
