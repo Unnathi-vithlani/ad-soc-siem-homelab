@@ -20,7 +20,12 @@ detection:
     selection_cmd:
         CommandLine|contains:
             - '-ExecutionPolicy Bypass'
+            - '-ep bypass'
+            - '-exec bypass'
             - '-EncodedCommand'
+            - ' -enc '
+            - '-w hidden'
+            - '-WindowStyle Hidden'
             - 'DownloadString'
             - 'Net.WebClient'
             - 'Invoke-Expression'
@@ -30,4 +35,5 @@ detection:
 falsepositives:
     - Administrative scripts that use execution policy bypass
     - Software deployment tools that launch encoded PowerShell
-level: high
+    - Management agents that call Net.WebClient (allow-list by parent process and signer)
+level: medium

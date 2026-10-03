@@ -28,7 +28,7 @@ correlation:
     rules:
         - failed_logon
     group-by:
-        - TargetUserName
+        - Account_Name
     timespan: 5m
     condition:
         gte: 5

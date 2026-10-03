@@ -5,4 +5,4 @@ Add your screenshots here. Suggested filenames:
 04_powershell.png         - WIN11 PowerShell commands
 05_splunk_data.png        - Splunk stats count by host (both hosts)
 06_alerts_configured.png  - Splunk Alerts page (3 alerts enabled)
-07_triggered_alerts.png   - Triggered Alerts page (42 results)
+07_triggered_alerts.png   - Triggered Alerts page (42 results, original build)

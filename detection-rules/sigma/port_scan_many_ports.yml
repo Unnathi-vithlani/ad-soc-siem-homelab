@@ -2,7 +2,7 @@ title: Outbound Connection
 id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a04
 name: network_connection_any
 status: experimental
-description: Sysmon network connection event. Used by the port scan correlation rule below.
+description: Any Sysmon TCP network connection event (inbound or outbound). Used by the port scan correlation rule below. No Initiated filter, because a scan against a host is logged there as an inbound connection (Initiated=false).
 author: Unnathi Vithlani
 date: 2026-10-03
 logsource:
@@ -10,7 +10,8 @@ logsource:
     product: windows
 detection:
     selection:
-        Initiated: 'true'
+        EventID: 3
+        Protocol: 'tcp'
     condition: selection
 level: low
 ---
@@ -18,6 +19,8 @@ title: Possible Port Scan, Many Destination Ports From One Source
 id: 6f1c0a52-3b7e-4c1d-9a41-2d8e5b7c1a05
 status: experimental
 description: One source contacts more than 10 distinct destination ports within one minute. Mirrors the Port Scan Detected alert in ad-soc-siem-homelab.
+references:
+    - https://attack.mitre.org/techniques/T1046/
 author: Unnathi Vithlani
 date: 2026-10-03
 tags:
@@ -33,4 +36,7 @@ correlation:
     condition:
         field: DestinationPort
         gt: 10
+falsepositives:
+    - Vulnerability scanners and asset discovery tools (allow-list their source IPs)
+    - Monitoring systems that poll many ports
 level: medium

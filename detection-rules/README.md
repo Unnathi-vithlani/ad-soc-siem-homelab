@@ -58,17 +58,17 @@ detection-rules/
 
 ## ✅ Validation Status
 
-Summary of what has been tested:
+Evidence for each layer lives in [`../validation/`](../validation/README.md). A layer is marked done only when its output file is committed.
 
-| Layer | Status |
-|-------|--------|
-| Lab attacks (Nmap scan, failed logons, PowerShell commands) | ✅ Executed in the lab |
-| Original Splunk alerts | ✅ Fired and documented (see main README and `screenshots/`) |
-| Sigma rules run in their own engine | ✅ Tested |
-| Snort rules loaded and run in Snort | ✅ Tested |
-| YARA rules scanned against samples | ✅ Tested (script included below) |
+| Layer | Evidence file | Status |
+|-------|---------------|--------|
+| Lab attacks (Nmap scan, failed logons, PowerShell commands) | `validation/screenshots/` | Done |
+| Original Splunk alerts fired | `validation/results.md` | Done, 42 triggered alerts across 3 rules |
+| Sigma converted to SPL and run in Splunk | `validation/results.md` | Converted, 3 of 3. Two rules fixed |
+| Snort rules loaded and alerting | `validation/results.md` | Done, 1,412 raw alerts from 2 scans, 8 on Hydra |
+| YARA scanned against test files | `validation/results.md` | Done, 3 of 3 matched, benign clean |
 
-Each rule was tested in its own engine against the lab attack activity. The commands used to reproduce the tests are in the next section.
+Set the status to Done only after the evidence file is committed.
 
 ---
 
@@ -82,7 +82,7 @@ cd detection-rules/yara
 bash test_yara.sh
 ```
 
-Expected: the three attack samples each match one rule, and the benign sample matches nothing.
+Expected: the three attack files each match one rule, and the benign file matches nothing.
 
 **Sigma** (convert to Splunk SPL):
 
@@ -108,6 +108,7 @@ Then run an Nmap SYN scan against 192.168.100.0/24 from Kali and check the alert
 
 - Thresholds (10 ports per minute, 5 failures per 5 minutes) were tuned for this small lab. A production network would need different values and allow-listing for scanners and admin tools.
 - YARA string matching can be evaded by obfuscation. It complements log-based detection and does not replace it.
+- Snort SID 1000001 produces many raw alerts per scan (1,412 for 2 scans). Count scans, not alerts.
 - Snort rules assume the lab subnet `192.168.100.0/24` and need editing for other networks.
 
 ---

@@ -5,13 +5,27 @@
 # ============================================================
 
 # ------------------------------------------------------------
-# ALERT 1 — Brute Force Attack Detection
+# ALERT 1 (v1, original) — Brute Force Attack Detection
 # Detects: Multiple failed login attempts (EventCode 4625)
 # Type: Scheduled | Every hour | Severity: Medium
 # ------------------------------------------------------------
 index=main sourcetype="WinEventLog:Security" EventCode=4625
 | stats count by host, Account_Name
 | where count >= 1
+
+
+# ------------------------------------------------------------
+# ALERT 1 (TUNED) — Brute Force, Repeated Failures
+# Replaces the single-failure threshold above (count >= 1), which
+# alerted on every mistyped password.
+# Logic matches detection-rules/sigma/failed_logon_burst.yml:
+# 5 or more failed logons for one account within 5 minutes.
+# Type: Scheduled | Every 5 minutes | Severity: Medium
+# ------------------------------------------------------------
+index=main sourcetype="WinEventLog:Security" EventCode=4625
+| bin _time span=5m
+| stats count by _time, host, Account_Name
+| where count >= 5
 
 
 # ------------------------------------------------------------
